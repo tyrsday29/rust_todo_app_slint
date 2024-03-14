@@ -1,0 +1,81 @@
+import { Button, VerticalBox , TextEdit, LineEdit, StandardListView, GroupBox, ScrollView, CheckBox, ListView, StandardTableView} from "std-widgets.slint";
+
+export struct TodoItem{
+    name:string,
+    checked: bool,
+}
+
+
+export component AppWindow inherits Window {
+    callback enter_todo(string);
+    callback completed;
+    in-out property <[TodoItem]> items:[];
+    title: "Rusty To Do App";
+    background: #313e50;
+    min-height: 510px;
+    max-height: 900px;
+    min-width: 500px;
+    max-width: 1000px;
+      
+VerticalLayout {
+    padding-top: 15px;
+    
+    Text {
+        text: "To Do List";
+        horizontal-alignment: center;
+        font-size: 25px; } 
+        
+        //For some reason root.height-200px is integral for keeping the "Enter to do item" text with all of the other items
+        //you can play around with it, but that's the only thing I found that worked correctly!
+    ListView {
+        width: root.width - 2px;
+        height: root.height - 200px;
+                for item in items: 
+                CheckBox{
+                                    text: item.name;
+                                    checked: item.checked;
+                                    toggled => {item.checked = !item.checked}
+                                    }
+                                }               
+ 
+    Text {
+            text:"Enter To Do Item Below";
+            font-size: 16px;
+            horizontal-alignment: center;
+        }
+      
+    HorizontalLayout {
+            input := TextEdit {
+                font-size: 16px;
+                height: 70px;
+                z:5;
+            }
+        }
+    
+    HorizontalLayout {
+            button := Button {
+                text: "Add Item";
+                height: 35px;
+                primary: true;
+                z:5;
+                clicked => {
+                    root.enter_todo(input.text);
+                }
+            }
+        }
+
+    HorizontalLayout {
+            button2 := Button {
+                text: "Delete Items";
+                height: 35px;
+                z:5;
+                clicked => {
+                    root.completed();
+                }
+            }
+        }
+    
+    
+    }
+}     
+    
