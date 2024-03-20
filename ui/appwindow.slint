@@ -3,41 +3,103 @@ import { Button, VerticalBox , TextEdit, LineEdit, StandardListView, GroupBox, S
 export struct TodoItem{
     name:string,
     checked: bool,
+    indexp: int,
 }
+
 
 
 export component AppWindow inherits Window {
     callback enter_todo(string);
     callback completed;
+    callback pass_back(string,int);
+    callback move(int);
+    in-out property <[int]> position:[];
     in-out property <[TodoItem]> items:[];
+    in-out property <bool> editor: true;
     title: "Rusty To Do App";
     background: #313e50;
     min-height: 510px;
     max-height: 900px;
     min-width: 500px;
     max-width: 1000px;
-      
+
+
 VerticalLayout {
-    padding-top: 15px;
-    
+    padding-top: 25px;
+
+  HorizontalLayout {
     Text {
         text: "To Do List";
         horizontal-alignment: center;
-        font-size: 25px; } 
-        
-        //For some reason root.height-200px is integral for keeping the "Enter to do item" text with all of the other items
-        //you can play around with it, but that's the only thing I found that worked correctly!
-    ListView {
-        width: root.width - 2px;
-        height: root.height - 200px;
-                for item in items: 
-                CheckBox{
-                                    text: item.name;
-                                    checked: item.checked;
-                                    toggled => {item.checked = !item.checked}
+        font-size: 25px; }
+    Button {
+        text: "edit";
+        width:50px;
+            clicked => {root.editor = !root.editor;
+                        if self.text == "close"{
+                            self.text = "edit";
+
+                        }else if self.text == "edit"{
+                            self.text = "close"
                                     }
-                                }               
- 
+                        }}
+    Rectangle {
+        width: 10px; }
+    }
+        
+  HorizontalLayout {height: 30px;}
+  
+ ListView {
+    //For some reason root.height-200px is integral for keeping the "Enter to do item" text with all of the other items
+    //you can play around with it, but that's the only thing I found that worked correctly! 
+    width: root.width - 2px;
+    height: root.height - 250px;
+
+      
+
+    for item in items: 
+        HorizontalLayout{
+             height: 40px;
+                //spacer
+                Rectangle { width:7px;}
+                        
+                Rectangle {
+                        width: 40px;
+                           boxes := CheckBox {
+                                    checked: item.checked;
+                                    toggled => {item.checked = !item.checked } }
+                                }
+
+                HorizontalLayout {
+                     Rectangle { width:12px;
+                    }   
+                     Rectangle {
+                                width: root.width - 117px;
+                                   todoinput:= TextInput {
+                                            vertical-alignment: center;
+                                            single-line: false;
+                                            font-size: 16px;
+                                            text: item.name;
+                                            wrap: word-wrap;
+                                            read-only: root.editor;
+                                            width: parent.width;
+                                            height: 100%;
+                                            edited=> {
+                                                pass_back(todoinput.text,item.indexp);
+                                            }
+                                        }
+                                    }
+                              }
+                    Button { 
+                        text: "switch";
+                        width:50px;
+                        clicked => {root.move(item.indexp);
+                                    todoinput.select-all();
+                        }
+
+                    }
+                }
+            }           
     Text {
             text:"Enter To Do Item Below";
             font-size: 16px;
@@ -60,6 +122,7 @@ VerticalLayout {
                 z:5;
                 clicked => {
                     root.enter_todo(input.text);
+                    input.select-all();
                 }
             }
         }

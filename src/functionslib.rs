@@ -1,67 +1,18 @@
 use std::fs::File;
 use std::path::Path;
-use std::io::{BufWriter, BufReader};
-//this includes the TodoItem struct exported from slint
-slint::include_modules!();
-use serde::{Deserialize, Serialize};
+use std::io::BufReader;
+use std::cell::RefCell;
+use crate::serializable_item::UpdateIndex;
+use crate::AppWindow;
+use crate::TodoItem;
 use slint::{ Model, VecModel, SharedString};
 use std::rc::Rc;
 use bincode::deserialize_from;
-
+use crate::serializable_item::SerializableItem;
 
 pub const PATH:&str = "C:/ProgramData/todo/todo";
 const FOLDER_PATH:&str = "C:/ProgramData/todo";
 const FILE_PATH:&str = "todo";
-
-
-#[derive(Serialize, Deserialize)]
- struct SerializableItem{
-   name: String,
-   checked: bool,
-}
-
-impl From<TodoItem> for SerializableItem {
-    fn from(item:TodoItem) -> Self{
-        SerializableItem {
-          name: item.name.to_string(),
-          checked: item.checked,
-        }
-    }
-}
-
-impl From<SerializableItem> for TodoItem{
-    fn from(item:SerializableItem) -> Self{
-        TodoItem{
-            name: item.name.into(),
-            checked: item.checked,
-        }
-    }
-}
-
-impl TodoItem {
-    
-    fn write_and_serialize(the_model: &VecModel<Self>) -> Result<(), Box<dyn std::error::Error>> {
-        // Creates bufwriter vector for file to write to
-        let file = File::create(PATH).unwrap();
-        let file = BufWriter::new(file);
-        // Create vector of SerializableItems from the TodoItems to simply deal with Shared Strings
-        let items: Vec<SerializableItem> = the_model.iter().map(|item| item.into()).collect();
-        // Write to the file in binary                                          
-        bincode::serialize_into(file, &items).expect("Failed to write to file");
-
-        Ok(())
-    }
-
-
-    pub fn remove_checked_items(items_model: &VecModel<Self>) {
-        // Iterate over the items and find the ones that are checked from the vector
-        let checked_items: Vec<_> = items_model.iter().enumerate().filter(|(_, item)| item.checked).collect();
-        for (index, _) in checked_items.into_iter().rev() {
-            items_model.remove(index);
-        }
-    }
-}
-
 
 //creates the necessary folders and files if they do not exist, or if something happens to them only for windows machines
 pub fn first_start(){
@@ -96,23 +47,16 @@ pub fn deserialize_and_set(ui: &AppWindow){
      };
  }
 
-
-//create new struct of TodoItem passed from the .slint file
-fn create_item(passed_string:SharedString)->TodoItem{
-        TodoItem{
-            name: passed_string,
-            checked: false,}        }
-
-
 pub fn push_and_serialize(passed_string:SharedString, ui: &AppWindow){
     //create TodoItem struct from passed string
-    let todo_item = create_item(passed_string);
+    let mut todo_item = TodoItem::new(passed_string);
       //create reference counted pointer to items property in slint ui and push item to vector
       let items_model_rc = ui.get_items();
       let items_model: &VecModel<TodoItem> = items_model_rc.as_any().downcast_ref::<VecModel<TodoItem>>().expect("push error!");
+          todo_item.indexp = items_model.row_count() as i32;
           items_model.push(todo_item);
       //write the vector to file as binary
-      TodoItem::write_and_serialize(items_model).expect("push write error!");
+      TodoItem::serialize_model_to_file(items_model).expect("push write error!");
  }
 
 
@@ -121,7 +65,52 @@ pub fn remove_and_serialize(ui: &AppWindow){
     let items_model_rc = ui.get_items();
     let items_model: &VecModel<TodoItem> = items_model_rc.as_any().downcast_ref::<VecModel<TodoItem>>().expect("remove error!");
     // Iterate over the items and find the ones that are checked from the vector
-    TodoItem::remove_checked_items(items_model);
+    TodoItem::remove_checked_items(items_model,ui);
     //write the vector to file as binary  
-    TodoItem::write_and_serialize(items_model).expect("remove write error!");
+    TodoItem::serialize_model_to_file(items_model).expect("remove write error!");
  }
+
+
+ pub fn do_the_move(moovple: Rc<RefCell<Vec<i32>>>, ui: &AppWindow){
+    //only acts when there are two items in the moovple
+    if moovple.borrow().len()==2{
+      let file= File::open(PATH).unwrap();
+      let file=BufReader::new(file);
+           //If deserialization from file is successful, do stuff, otherwise, don't
+           match deserialize_from::<_, Vec<SerializableItem>>(file){
+             Ok(mut items) => {
+                                  //get the item to be moved from the vector, remove it, reinsert and clear the moovple
+                                  let moved_item: SerializableItem = items.get(moovple.borrow()[0] as usize).unwrap().clone();
+                                  items.remove(moovple.borrow()[0] as usize);
+                                  items.insert(moovple.borrow()[1] as usize, moved_item);
+                                  moovple.borrow_mut().clear();
+                                  //sets the indexp property to each items index after the move
+                                  items.update_index();
+                                  //write the corrected vector to the file and the front end
+                                  SerializableItem::serialize_to_file(&items).expect("writing failed!");
+                                  SerializableItem::write_to_frontend(items, ui);
+                              },
+
+             //don't panic!
+             Err(_) => (),
+            }
+      }
+ }
+
+ 
+ pub fn save_edit(passed_item:SharedString, passed_index: i32){
+  //deserialize the vector from the file
+  let file= File::open(PATH).unwrap();
+      let file=BufReader::new(file);
+           //If deserialization is successful, edit the correct vector and write it to file, otherwise, don't (like with a blank file)
+           match deserialize_from::<_, Vec<SerializableItem>>(file){
+            Ok(mut items)=>{
+                items[passed_index as usize].name = passed_item.to_string();
+                SerializableItem::serialize_to_file(&items).expect("writing failed");
+            },
+            //don't panic!
+            Err(_) => (),
+           }
+
+ }
+
