@@ -1,6 +1,6 @@
 [package]
 name = "to-do"
-version = "0.9.9"
+version = "1.0.0"
 authors = ["royal-tier"]
 edition = "2021"
 build = "build.rs"
