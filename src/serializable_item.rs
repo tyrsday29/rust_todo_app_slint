@@ -25,8 +25,6 @@ impl Item for SerializableItem{
     fn set_index(&mut self, index:i32) {
         self.indexp = index;
     }
-  
-
 }
 
 impl <T: Item> UpdateIndex for Vec<T>{

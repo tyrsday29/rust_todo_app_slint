@@ -7,12 +7,12 @@ export struct TodoItem{
 }
 
 
-
 export component AppWindow inherits Window {
     callback enter_todo(string);
     callback completed;
     callback pass_back(string,int);
     callback move(int);
+    callback supercheck();
     in-out property <[int]> position:[];
     in-out property <[TodoItem]> items:[];
     in-out property <bool> editor: true;
@@ -27,7 +27,7 @@ export component AppWindow inherits Window {
 VerticalLayout {
     padding-top: 25px;
 
-  HorizontalLayout {
+HorizontalLayout {
     Text {
         text: "To Do List";
         horizontal-alignment: center;
@@ -48,16 +48,26 @@ VerticalLayout {
     }
         
   HorizontalLayout {height: 30px;}
-  
+
+HorizontalLayout {
+    CheckBox {
+        checked: false;
+        text: "check all";
+        toggled => {
+            self.checked = !self.checked;
+            supercheck(); }
+    }
+  }
+
  ListView {
     //For some reason root.height-200px is integral for keeping the "Enter to do item" text with all of the other items
     //you can play around with it, but that's the only thing I found that worked correctly! 
     width: root.width - 2px;
-    height: root.height - 250px;
+    height: root.height - 290px;
 
       
 
-    for item in items: 
+for item in items: 
         HorizontalLayout{
              height: 40px;
                 //spacer
@@ -67,7 +77,9 @@ VerticalLayout {
                         width: 40px;
                            boxes := CheckBox {
                                     checked: item.checked;
-                                    toggled => {item.checked = !item.checked } }
+                                    toggled => {
+                                        item.checked = !item.checked  
+                                    } }
                                 }
 
                 HorizontalLayout {

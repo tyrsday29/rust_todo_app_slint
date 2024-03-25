@@ -14,6 +14,7 @@ pub const PATH:&str = "C:/ProgramData/todo/todo";
 const FOLDER_PATH:&str = "C:/ProgramData/todo";
 const FILE_PATH:&str = "todo";
 
+
 //creates the necessary folders and files if they do not exist, or if something happens to them only for windows machines
 pub fn first_start(){
   let folder_path = Path::new(FOLDER_PATH);
@@ -27,12 +28,16 @@ pub fn first_start(){
         }
 }
 
+fn get_file()->BufReader<File>{
+    let file= File::open(PATH).unwrap();
+      let file=BufReader::new(file);
+      file
+}
 
 //set the initial to-do list from file
 pub fn deserialize_and_set(ui: &AppWindow){
     //create bufreader vector for file
-    let file= File::open(PATH).unwrap();
-    let file=BufReader::new(file);
+    let file= get_file();
          //If deserialization is successful, do stuff, otherwise, don't (like with a blank file)
          match deserialize_from::<_, Vec<SerializableItem>>(file){
            Ok(items) => {
@@ -74,8 +79,8 @@ pub fn remove_and_serialize(ui: &AppWindow){
  pub fn do_the_move(moovple: Rc<RefCell<Vec<i32>>>, ui: &AppWindow){
     //only acts when there are two items in the moovple
     if moovple.borrow().len()==2{
-      let file= File::open(PATH).unwrap();
-      let file=BufReader::new(file);
+      let file = get_file();
+          
            //If deserialization from file is successful, do stuff, otherwise, don't
            match deserialize_from::<_, Vec<SerializableItem>>(file){
              Ok(mut items) => {
@@ -100,8 +105,7 @@ pub fn remove_and_serialize(ui: &AppWindow){
  
  pub fn save_edit(passed_item:SharedString, passed_index: i32){
   //deserialize the vector from the file
-  let file= File::open(PATH).unwrap();
-      let file=BufReader::new(file);
+  let file = get_file();
            //If deserialization is successful, edit the correct vector and write it to file, otherwise, don't (like with a blank file)
            match deserialize_from::<_, Vec<SerializableItem>>(file){
             Ok(mut items)=>{
@@ -111,6 +115,19 @@ pub fn remove_and_serialize(ui: &AppWindow){
             //don't panic!
             Err(_) => (),
            }
-
  }
+
+ pub fn check_all(ui: &AppWindow){
+    let file= get_file();
+    match deserialize_from::<_, Vec<SerializableItem>>(file){
+        //read from file and if it is succesfull change item checked property then write to front and backend
+        Ok(mut items)=>{
+            items.iter_mut().for_each(|item| item.checked=!item.checked);
+            SerializableItem::serialize_to_file(&items).expect("writing failed");
+            SerializableItem::write_to_frontend(items, ui);
+        },
+        //don't panic!
+        Err(_) => (),
+       }
+}
 
